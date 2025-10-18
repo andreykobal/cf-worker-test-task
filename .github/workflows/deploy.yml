@@ -22,7 +22,7 @@ jobs:
           for f in $(find prisma/migrations -name "migration.sql"); do
             key="$(basename $(dirname "$f")).sql"
             echo "→ Uploading $key"
-            npx wrangler kv key put MIGRATIONS "$key" --path="$f"
+            npx wrangler kv key put --namespace-id=44c991d461d04acca04fc3852879d76e "$key" --path="$f"
           done
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
