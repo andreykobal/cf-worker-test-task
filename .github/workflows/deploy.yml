@@ -22,22 +22,33 @@ jobs:
           for f in $(find prisma/migrations -name "migration.sql"); do
             key="$(basename $(dirname "$f")).sql"
             echo "→ Uploading $key"
-            npx wrangler kv key put --namespace-id=44c991d461d04acca04fc3852879d76e "$key" --path="$f"
+            npx wrangler kv key put --namespace-id=44c991d461d04acca04fc3852879d76e "$key" --path="$f" --remote
           done
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
 
-      # Deploy the Worker
+      # Deploy the Worker and capture URL dynamically
       - name: Deploy Worker
-        run: npx wrangler deploy
+        id: deploy
+        run: |
+          npx wrangler deploy | tee deploy-output.txt
+          URL=$(grep -oP 'https://[^\s]+\.workers\.dev' deploy-output.txt | head -1 || echo "")
+          echo "worker_url=$URL" >> $GITHUB_OUTPUT
+          if [ -n "$URL" ]; then
+            echo "✅ Worker deployed at: $URL"
+          fi
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
 
-      # Automatically trigger migrations
+      # Automatically trigger migrations using dynamic URL
       - name: Trigger migrations
         run: |
-          echo "🚀 Triggering migrations at https://migration-worker.kobalandreas.workers.dev"
-          curl -sf https://migration-worker.kobalandreas.workers.dev || echo "⚠️ Migration trigger failed, will retry on next deploy"
+          if [ -n "${{ steps.deploy.outputs.worker_url }}" ]; then
+            echo "🚀 Triggering migrations at ${{ steps.deploy.outputs.worker_url }}"
+            curl -sf ${{ steps.deploy.outputs.worker_url }} || echo "⚠️ Migration trigger failed, will retry on next deploy"
+          else
+            echo "ℹ️ Worker URL not detected, skipping migration trigger"
+          fi
 
