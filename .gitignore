@@ -1,0 +1,17 @@
+# Environment
+.env
+.env.local
+.env.production
+
+# Dependencies
+node_modules/
+
+# Wrangler
+.wrangler/
+dist/
+
+# Prisma
+prisma/.env
+
+
+/src/generated/prisma

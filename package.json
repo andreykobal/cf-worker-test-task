@@ -1,0 +1,25 @@
+{
+  "name": "cf-worker-test-task",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "seed:before": "tsx prisma/seed-before.ts",
+    "seed:after": "tsx prisma/seed-after.ts",
+    "seed:before:prod": "dotenv -e .env.production -- tsx prisma/seed-before.ts",
+    "seed:after:prod": "dotenv -e .env.production -- tsx prisma/seed-after.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.17.1",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251011.0",
+    "dotenv": "^17.2.3",
+    "dotenv-cli": "^10.0.0",
+    "prisma": "^6.17.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.43.0"
+  }
+}

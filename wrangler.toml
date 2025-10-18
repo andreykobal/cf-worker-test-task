@@ -1,0 +1,14 @@
+name = "migration-worker"
+main = "src/worker.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+account_id = "3b0346f649e56e291893970c77ccbfee"
+
+[[kv_namespaces]]
+binding = "MIGRATIONS"
+id = "44c991d461d04acca04fc3852879d76e"
+
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "d04b0d94db434ffa989d757235d7ccf2"
+
