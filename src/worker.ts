@@ -22,6 +22,8 @@ async function applyMigrations(env: Env): Promise<void> {
   });
   await client.connect();
 
+  console.log("🔌 Connected to database");
+
   // Create migrations tracking table
   await client.query(`
     CREATE TABLE IF NOT EXISTS _migrations (
@@ -35,28 +37,58 @@ async function applyMigrations(env: Env): Promise<void> {
     (await client.query<{ id: string }>("SELECT id FROM _migrations"))
       .rows.map(r => r.id)
   );
+  console.log("📋 Already applied:", Array.from(applied));
+
+  // Get all migrations from KV
+  const allKeys = await listKV(env);
+  console.log("📦 Migrations in KV:", allKeys);
 
   // Apply pending migrations
-  for (const key of await listKV(env)) {
-    if (applied.has(key)) continue;
+  for (const key of allKeys) {
+    if (applied.has(key)) {
+      console.log(`⏭️  Skipping ${key} (already applied)`);
+      continue;
+    }
     
     const sql = await env.MIGRATIONS.get(key);
-    if (!sql) continue;
+    if (!sql) {
+      console.log(`⚠️  No SQL found for ${key}`);
+      continue;
+    }
 
-    console.log("Applying migration:", key);
+    console.log(`🚀 Applying migration: ${key}`);
+    console.log(`📝 SQL length: ${sql.length} chars`);
     
-    // Split SQL by semicolons and execute each statement in separate transaction
-    const statements = sql.split(';').map(s => s.trim()).filter(s => s.length > 0 && !s.startsWith('--'));
+    // Split SQL by semicolons and execute each statement
+    const statements = sql
+      .split(';')
+      .map(s => s.trim())
+      .filter(s => s.length > 0 && !s.startsWith('--'));
     
-    for (const statement of statements) {
+    console.log(`📊 Found ${statements.length} statements to execute`);
+    
+    for (let i = 0; i < statements.length; i++) {
+      const statement = statements[i];
+      console.log(`▶️  Executing statement ${i + 1}/${statements.length}`);
+      console.log(`   SQL: ${statement.substring(0, 100)}...`);
+      
       try {
-        await client.query(statement);
+        const result = await client.query(statement);
+        console.log(`   ✅ Success (rows affected: ${result.rowCount || 0})`);
       } catch (e: any) {
+        console.log(`   ❌ Error: ${e.message}`);
+        
         // If it's a backfill error, wait and retry
         if (e.message?.includes('backfilled') || e.message?.includes('backfill')) {
-          console.log("Waiting for backfill to complete, retrying in 2s...");
+          console.log("   ⏳ Waiting for backfill to complete, retrying in 2s...");
           await new Promise(resolve => setTimeout(resolve, 2000));
-          await client.query(statement);
+          try {
+            const retryResult = await client.query(statement);
+            console.log(`   ✅ Retry success (rows affected: ${retryResult.rowCount || 0})`);
+          } catch (retryError: any) {
+            console.log(`   ❌ Retry also failed: ${retryError.message}`);
+            throw retryError;
+          }
         } else {
           throw e;
         }
@@ -65,8 +97,10 @@ async function applyMigrations(env: Env): Promise<void> {
     
     // Record migration as applied
     await client.query("INSERT INTO _migrations (id, applied_at) VALUES ($1, now())", [key]);
+    console.log(`✅ Migration ${key} recorded as applied`);
   }
 
+  console.log("🎉 All migrations processed");
   await client.end();
 }
 
