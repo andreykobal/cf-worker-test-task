@@ -65,11 +65,16 @@ async function applyMigrations(env: Env): Promise<string[]> {
     log(`🚀 Applying migration: ${key}`);
     log(`📝 SQL length: ${sql.length} chars`);
     
-    // Split SQL by semicolons and execute each statement
-    const statements = sql
+    // Remove comment-only lines, then split by semicolons
+    const cleanedSql = sql
+      .split('\n')
+      .filter(line => !line.trim().startsWith('--'))
+      .join('\n');
+    
+    const statements = cleanedSql
       .split(';')
       .map(s => s.trim())
-      .filter(s => s.length > 0 && !s.startsWith('--'));
+      .filter(s => s.length > 0);
     
     log(`📊 Found ${statements.length} statements to execute`);
     
