@@ -1,6 +1,6 @@
 # 🧭 Cloudflare Worker + CockroachDB + Prisma (Auto-Migrations)
 
-> 💡 **Want step-by-step instructions?** See [INSTRUCTIONS.md](./INSTRUCTIONS.md) for a complete linear workflow from start to finish.
+> 💡 **Want step-by-step instructions?** See [INSTRUCTIONS.md](./INSTRUCTIONS.md) for a complete linear workflow from start to finish..
 
 ## 📋 Challenge
 
