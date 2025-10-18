@@ -44,10 +44,27 @@ async function applyMigrations(env: Env): Promise<void> {
     if (!sql) continue;
 
     console.log("Applying migration:", key);
-    await client.query("BEGIN");
-    await client.query(sql);
-    await client.query("INSERT INTO _migrations (id) VALUES ($1)", [key]);
-    await client.query("COMMIT");
+    
+    // Split SQL by semicolons and execute each statement in separate transaction
+    const statements = sql.split(';').map(s => s.trim()).filter(s => s.length > 0 && !s.startsWith('--'));
+    
+    for (const statement of statements) {
+      try {
+        await client.query(statement);
+      } catch (e: any) {
+        // If it's a backfill error, wait and retry
+        if (e.message?.includes('backfilled') || e.message?.includes('backfill')) {
+          console.log("Waiting for backfill to complete, retrying in 2s...");
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          await client.query(statement);
+        } else {
+          throw e;
+        }
+      }
+    }
+    
+    // Record migration as applied
+    await client.query("INSERT INTO _migrations (id, applied_at) VALUES ($1, now())", [key]);
   }
 
   await client.end();
